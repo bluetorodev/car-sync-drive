@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Plus, DollarSign } from 'lucide-react';
+import { Plus, IndianRupee } from 'lucide-react';
 import { format } from 'date-fns';
 import { z } from 'zod';
 
@@ -24,8 +24,23 @@ interface Expense {
   description?: string;
 }
 
+// Currency formatting function for Indian Rupees
+const formatINR = (amount: number): string => {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+};
+
+// Simple rupee formatting (fallback)
+const formatRupees = (amount: number): string => {
+  return `₹${amount.toFixed(2)}`;
+};
+
 export function ExpensesList({ vehicleId }: { vehicleId: string }) {
-  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [expenses, setExpenses] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -46,7 +61,6 @@ export function ExpensesList({ vehicleId }: { vehicleId: string }) {
         .select('*')
         .eq('vehicle_id', vehicleId)
         .order('date', { ascending: false });
-
       if (error) throw error;
       setExpenses(data || []);
     } catch (error: any) {
@@ -56,7 +70,6 @@ export function ExpensesList({ vehicleId }: { vehicleId: string }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     try {
       expenseSchema.parse({
         ...formData,
@@ -68,9 +81,7 @@ export function ExpensesList({ vehicleId }: { vehicleId: string }) {
         return;
       }
     }
-
     setLoading(true);
-
     try {
       const { error } = await supabase.from('expenses').insert({
         vehicle_id: vehicleId,
@@ -79,9 +90,7 @@ export function ExpensesList({ vehicleId }: { vehicleId: string }) {
         date: formData.date,
         description: formData.description || null,
       });
-
       if (error) throw error;
-
       toast.success('Expense added!');
       setFormData({
         type: 'maintenance',
@@ -102,23 +111,29 @@ export function ExpensesList({ vehicleId }: { vehicleId: string }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-        <span className="text-sm font-medium">Total Spent</span>
-        <span className="text-lg font-bold text-primary">${totalExpenses.toFixed(2)}</span>
+      <div className="flex items-center justify-between rounded-md border p-4">
+        <div className="flex items-center space-x-2">
+          <IndianRupee className="h-4 w-4" />
+          <span className="text-sm font-medium">Total Spent</span>
+        </div>
+        <span className="text-lg font-bold">{formatRupees(totalExpenses)}</span>
       </div>
 
       {!showForm ? (
-        <Button variant="outline" size="sm" onClick={() => setShowForm(true)} className="w-full">
-          <Plus className="w-4 h-4 mr-2" />
+        <Button onClick={() => setShowForm(true)} className="w-full">
+          <Plus className="mr-2 h-4 w-4" />
           Add Expense
         </Button>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-3 p-3 border rounded-lg">
-          <div className="space-y-2">
-            <Label htmlFor="type" className="text-xs">Type</Label>
-            <Select value={formData.type} onValueChange={(value: any) => setFormData({ ...formData, type: value })}>
-              <SelectTrigger className="h-8 text-sm">
-                <SelectValue />
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div className="space-y-1">
+            <Label>Type</Label>
+            <Select 
+              value={formData.type} 
+              onValueChange={(value) => setFormData({ ...formData, type: value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select expense type" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="fuel">Fuel</SelectItem>
@@ -129,85 +144,82 @@ export function ExpensesList({ vehicleId }: { vehicleId: string }) {
               </SelectContent>
             </Select>
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-2">
-              <Label htmlFor="amount" className="text-xs">Amount</Label>
-              <Input
-                id="amount"
-                type="number"
-                step="0.01"
-                value={formData.amount}
-                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                placeholder="0.00"
-                required
-                className="h-8 text-sm"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="date" className="text-xs">Date</Label>
-              <Input
-                id="date"
-                type="date"
-                value={formData.date}
-                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                required
-                className="h-8 text-sm"
-              />
-            </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="amount">Amount (₹)</Label>
+            <Input
+              id="amount"
+              type="number"
+              step="0.01"
+              value={formData.amount}
+              onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+              placeholder="2500.00"
+              required
+              className="h-8 text-sm"
+            />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="description" className="text-xs">Description</Label>
+
+          <div className="space-y-1">
+            <Label htmlFor="date">Date</Label>
+            <Input
+              id="date"
+              type="date"
+              value={formData.date}
+              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+              required
+              className="h-8 text-sm"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="description">Description</Label>
             <Input
               id="description"
+              type="text"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder="Optional description"
               className="h-8 text-sm"
             />
           </div>
-          <div className="flex gap-2">
-            <Button type="submit" size="sm" disabled={loading} className="flex-1">
-              Add
+
+          <div className="flex justify-end space-x-2">
+            <Button type="submit" size="sm" disabled={loading}>
+              {loading ? 'Adding...' : 'Add'}
             </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => setShowForm(false)}>
+            <Button type="button" size="sm" variant="outline" onClick={() => setShowForm(false)}>
               Cancel
             </Button>
           </div>
         </form>
       )}
 
-      <div className="space-y-2">
-        {expenses.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">
-            No expenses recorded yet
-          </p>
-        ) : (
-          expenses.map((expense) => (
-            <div
-              key={expense.id}
-              className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
-            >
+      {expenses.length === 0 ? (
+        <div className="text-center text-sm text-gray-500">
+          No expenses recorded yet
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {expenses.map((expense: Expense) => (
+            <div key={expense.id} className="flex items-center justify-between rounded-md border p-3">
               <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium uppercase text-muted-foreground">
-                    {expense.type}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {format(new Date(expense.date), 'MMM dd, yyyy')}
-                  </span>
+                <div className="text-sm font-medium capitalize">{expense.type}</div>
+                <div className="text-xs text-gray-500">
+                  {format(new Date(expense.date), 'MMM dd, yyyy')}
                 </div>
                 {expense.description && (
-                  <p className="text-sm mt-1">{expense.description}</p>
+                  <div className="text-xs text-gray-600 mt-1">
+                    {expense.description}
+                  </div>
                 )}
               </div>
-              <div className="flex items-center gap-1 font-semibold text-primary">
-                <DollarSign className="w-4 h-4" />
-                {parseFloat(expense.amount.toString()).toFixed(2)}
+              <div className="text-right">
+                <div className="text-sm font-medium">{formatRupees(parseFloat(expense.amount.toString()))}</div>
               </div>
             </div>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
