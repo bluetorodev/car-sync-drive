@@ -27,6 +27,21 @@ interface FuelLog {
 const GALLON_TO_LITER = 3.78541;
 const MILES_TO_KILOMETERS = 1.60934;
 
+// Currency formatting function for Indian Rupees
+const formatINR = (amount: number): string => {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+};
+
+// Simple rupee formatting (fallback)
+const formatRupees = (amount: number): string => {
+  return `₹${amount.toFixed(2)}`;
+};
+
 export function FuelLogsList({ vehicleId }: { vehicleId: string }) {
   const [logs, setLogs] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -158,14 +173,14 @@ export function FuelLogsList({ vehicleId }: { vehicleId: string }) {
             />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="price_per_liter">$/Liter</Label>
+            <Label htmlFor="price_per_liter">₹/Liter</Label>
             <Input
               id="price_per_liter"
               type="number"
-              step="0.001"
+              step="0.01"
               value={formData.price_per_liter}
               onChange={(e) => setFormData({ ...formData, price_per_liter: e.target.value })}
-              placeholder="0.925"
+              placeholder="108.50"
               required
               className="h-8 text-sm"
             />
@@ -210,8 +225,8 @@ export function FuelLogsList({ vehicleId }: { vehicleId: string }) {
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-sm font-medium">${(log.liters * log.price_per_liter).toFixed(2)}</div>
-                <div className="text-xs text-gray-500">${log.price_per_liter.toFixed(2)}/L</div>
+                <div className="text-sm font-medium">{formatRupees(log.liters * log.price_per_liter)}</div>
+                <div className="text-xs text-gray-500">{formatRupees(log.price_per_liter)}/L</div>
               </div>
             </div>
           ))}
